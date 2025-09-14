@@ -1,0 +1,43 @@
+version: '3.8'
+
+services:
+  codesign-api:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    ports:
+      - "8000:8000"
+    volumes:
+      - ../uploads:/app/uploads
+      - ../certificates:/app/certificates
+      - ../keystores:/app/keystores
+      - ../codesign_api.db:/app/codesign_api.db
+    environment:
+      - API_HOST=0.0.0.0
+      - API_PORT=8000
+      - DEBUG=false
+      - DATABASE_URL=sqlite+aiosqlite:///./codesign_api.db
+      - UPLOAD_DIRECTORY=/app/uploads
+      - CERTIFICATE_DIRECTORY=/app/certificates
+      - KEYSTORE_DIRECTORY=/app/keystores
+      - LOG_LEVEL=INFO
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Optional: Add nginx reverse proxy
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - codesign-api
+    restart: unless-stopped
